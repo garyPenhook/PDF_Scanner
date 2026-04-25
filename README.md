@@ -5,6 +5,16 @@ Defensive CLI scanner for PDF triage. It recursively discovers PDF files, runs r
 ## Quick Start
 
 ```bash
+./scan.sh
+```
+
+With no path arguments, `scan.sh` searches common local roots: your home directory,
+`/root`, `/tmp`, `/var/tmp`, `/opt`, `/srv`, `/media`, and `/mnt`, limited by the
+permissions of the user running the command. Use `--full-system` to scan from `/`.
+
+To scan a narrower path:
+
+```bash
 ./scan.py ~/Downloads --out-dir ./pdfscan-report --no-yara --no-clamav
 ```
 

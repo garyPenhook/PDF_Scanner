@@ -25,12 +25,16 @@ def _is_excluded(path: Path, config: AppConfig, regexes: list[re.Pattern[str]]) 
     return any(regex.search(text) for regex in regexes)
 
 
-def _contains_pdf_magic(path: Path) -> bool:
+def _is_pdf_candidate(path: Path) -> bool:
     try:
         with path.open("rb") as fh:
-            return b"%PDF-" in fh.read(1024)
+            header = fh.read(1024)
     except OSError:
         return False
+    offset = header.find(b"%PDF-")
+    if offset == 0:
+        return True
+    return offset > 0 and path.suffix.lower() == ".pdf"
 
 
 def discover(config: AppConfig) -> Iterator[FileRecord]:
@@ -43,7 +47,7 @@ def discover(config: AppConfig) -> Iterator[FileRecord]:
         except OSError:
             continue
         if stat.S_ISREG(root_stat.st_mode):
-            if _contains_pdf_magic(root):
+            if _is_pdf_candidate(root):
                 yield FileRecord(root, root.resolve(strict=False), root_stat)
             continue
         if not stat.S_ISDIR(root_stat.st_mode):
@@ -79,7 +83,7 @@ def discover(config: AppConfig) -> Iterator[FileRecord]:
                 seen_inodes.add(key)
                 if config.one_file_system and st.st_dev != root_dev:
                     continue
-                if _contains_pdf_magic(path):
+                if _is_pdf_candidate(path):
                     yield FileRecord(path, path.resolve(strict=False), st)
 
 

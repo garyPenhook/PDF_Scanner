@@ -24,6 +24,20 @@ DEFAULT_EXCLUDES = [
 ]
 
 
+def default_scan_roots() -> list[Path]:
+    roots = [
+        Path.home(),
+        Path("/root"),
+        Path("/tmp"),
+        Path("/var/tmp"),
+        Path("/opt"),
+        Path("/srv"),
+        Path("/media"),
+        Path("/mnt"),
+    ]
+    return list(dict.fromkeys(roots))
+
+
 @dataclass(slots=True)
 class ClamAVConfig:
     enabled: bool = True
@@ -54,7 +68,7 @@ class ReportConfig:
 
 @dataclass(slots=True)
 class AppConfig:
-    roots: list[Path] = field(default_factory=lambda: [Path.cwd()])
+    roots: list[Path] = field(default_factory=default_scan_roots)
     out_dir: Path | None = None
     include: list[Path] = field(default_factory=list)
     exclude: list[Path] = field(default_factory=lambda: [Path(p) for p in DEFAULT_EXCLUDES])
@@ -218,6 +232,8 @@ def load_config(argv: list[str] | None = None) -> AppConfig:
         config.exclude_regex.extend(args.exclude_regex)
     if args.as_root:
         config.as_root = True
+        if not args.paths:
+            config.roots = [Path("/")]
     if args.no_clamav:
         config.clamav.enabled = False
     if args.require_clamav:
