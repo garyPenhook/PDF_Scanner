@@ -1,0 +1,16 @@
+.codex
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+dist/
+build/
+*.egg-info/
+pdfscan-report-*/
+compiled_rules.yarc
+findings.jsonl
+summary.csv
+report.md
+run.json
