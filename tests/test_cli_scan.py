@@ -25,6 +25,8 @@ def test_cli_scans_directory_and_writes_reports(tmp_path: Path) -> None:
             out_dir.as_posix(),
             "--no-yara",
             "--no-clamav",
+            "--jobs",
+            "2",
             "--format",
             "jsonl,csv,md",
             "--full",
@@ -42,7 +44,8 @@ def test_cli_scans_directory_and_writes_reports(tmp_path: Path) -> None:
     assert suspicious["tag_counts"]["/OpenAction"] == 1
     assert (out_dir / "summary.csv").exists()
     assert (out_dir / "report.md").exists()
-    assert (out_dir / "run.json").exists()
+    run_info = json.loads((out_dir / "run.json").read_text(encoding="utf-8"))
+    assert run_info["acceleration"]["jobs"] == 2
 
 
 def test_too_large_is_unknown(tmp_path: Path) -> None:

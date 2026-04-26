@@ -11,6 +11,10 @@ timeout = 30
 worker_recycle = 200
 worker_memory_mb = 1024
 
+[acceleration]
+gpu = "auto"
+min_gpu_entropy_size = "4M"
+
 [clamav]
 enabled = true
 required = false

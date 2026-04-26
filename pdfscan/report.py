@@ -56,6 +56,7 @@ def write_markdown(path: Path, findings: Iterable[ScanFinding], run_info: dict) 
         f"- Host: {run_info.get('host')}",
         f"- Files scanned: {len(rows)}",
         f"- ClamAV: {run_info.get('clamav_status')}",
+        f"- Acceleration: {_acceleration_summary(run_info.get('acceleration'))}",
         "",
         "## Verdict Counts",
         "",
@@ -81,3 +82,20 @@ def write_markdown(path: Path, findings: Iterable[ScanFinding], run_info: dict) 
 
 def write_run_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _acceleration_summary(payload: object) -> str:
+    if not isinstance(payload, dict):
+        return "unknown"
+    entropy_backend = payload.get("entropy_backend", "cpu")
+    jobs = payload.get("jobs", "unknown")
+    gpu_available = payload.get("gpu_available")
+    gpu_name = payload.get("gpu_name")
+    if gpu_available and gpu_name:
+        return f"{jobs} worker(s), {entropy_backend} entropy on {gpu_name}"
+    if gpu_available:
+        return f"{jobs} worker(s), {entropy_backend} entropy"
+    reason = payload.get("gpu_reason")
+    if reason:
+        return f"{jobs} worker(s), CPU entropy; GPU unavailable ({reason})"
+    return f"{jobs} worker(s), CPU entropy"

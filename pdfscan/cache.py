@@ -15,24 +15,29 @@ class ScanCache:
         if enabled:
             try:
                 path.parent.mkdir(parents=True, exist_ok=True)
-                self._conn = sqlite3.connect(path)
+                self._conn = sqlite3.connect(path, timeout=30)
             except OSError:
                 self.enabled = False
                 self._conn = None
                 return
-            self._conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS seen (
-                  sha256 TEXT NOT NULL,
-                  scanner_version TEXT NOT NULL,
-                  rules_version TEXT NOT NULL,
-                  clamav_version TEXT NOT NULL,
-                  payload TEXT NOT NULL,
-                  PRIMARY KEY (sha256, scanner_version, rules_version, clamav_version)
+            try:
+                self._conn.execute("PRAGMA busy_timeout=30000")
+                self._conn.execute("PRAGMA journal_mode=WAL")
+                self._conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS seen (
+                      sha256 TEXT NOT NULL,
+                      scanner_version TEXT NOT NULL,
+                      rules_version TEXT NOT NULL,
+                      clamav_version TEXT NOT NULL,
+                      payload TEXT NOT NULL,
+                      PRIMARY KEY (sha256, scanner_version, rules_version, clamav_version)
+                    )
+                    """
                 )
-                """
-            )
-            self._conn.commit()
+                self._conn.commit()
+            except sqlite3.Error:
+                self._disable()
 
     def get(
         self, sha256: str, scanner_version: str, rules_version: str, clamav_version: str

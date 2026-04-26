@@ -8,8 +8,9 @@ from typing import Any, Callable
 
 
 def run_with_timeout(func: Callable[..., Any], args: tuple, timeout: int) -> tuple[str, Any]:
-    result_queue: mp.Queue = mp.Queue(maxsize=1)
-    process = mp.Process(target=_child_main, args=(result_queue, func, args))
+    context = mp.get_context("spawn")
+    result_queue: mp.Queue = context.Queue(maxsize=1)
+    process = context.Process(target=_child_main, args=(result_queue, func, args))
     process.start()
     process.join(timeout)
     if process.is_alive():

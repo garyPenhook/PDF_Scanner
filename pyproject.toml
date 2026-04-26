@@ -15,6 +15,7 @@ dependencies = []
 [project.optional-dependencies]
 deep = ["pikepdf>=8.0"]
 yara = ["yara-python>=4.5"]
+gpu = ["numba>=0.59"]
 test = ["pytest>=8.0"]
 
 [project.scripts]

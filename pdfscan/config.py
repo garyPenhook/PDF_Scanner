@@ -26,7 +26,7 @@ DEFAULT_EXCLUDES = [
 
 def default_scan_roots() -> list[Path]:
     roots = [
-        Path.home(),
+        Path("/home"),
         Path("/root"),
         Path("/tmp"),
         Path("/var/tmp"),
@@ -67,6 +67,12 @@ class ReportConfig:
 
 
 @dataclass(slots=True)
+class AccelerationConfig:
+    gpu: str = "auto"
+    min_gpu_entropy_size: int = 4 * 1024 * 1024
+
+
+@dataclass(slots=True)
 class AppConfig:
     roots: list[Path] = field(default_factory=default_scan_roots)
     out_dir: Path | None = None
@@ -92,6 +98,7 @@ class AppConfig:
     yara: YaraConfig = field(default_factory=YaraConfig)
     ioc: IOCConfig = field(default_factory=IOCConfig)
     report: ReportConfig = field(default_factory=ReportConfig)
+    acceleration: AccelerationConfig = field(default_factory=AccelerationConfig)
 
 
 def default_config_paths() -> list[Path]:
@@ -160,6 +167,15 @@ def apply_mapping(config: AppConfig, data: dict) -> None:
             config.report.formats = list(rdata["formats"])
         if "min_score" in rdata:
             config.report.min_score = int(rdata["min_score"])
+    if "acceleration" in data:
+        adata = data["acceleration"]
+        if "gpu" in adata:
+            config.acceleration.gpu = str(adata["gpu"])
+        if "min_gpu_entropy_size" in adata:
+            config.acceleration.min_gpu_entropy_size = parse_size(
+                adata["min_gpu_entropy_size"],
+                config.acceleration.min_gpu_entropy_size,
+            )
 
 
 def parser() -> argparse.ArgumentParser:
@@ -173,6 +189,9 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--timeout", type=int)
     ap.add_argument("--worker-recycle", type=int)
     ap.add_argument("--worker-memory-mb", type=int)
+    gpu = ap.add_mutually_exclusive_group()
+    gpu.add_argument("--gpu", choices=["auto", "on", "off"])
+    gpu.add_argument("--no-gpu", dest="gpu", action="store_const", const="off")
     fs = ap.add_mutually_exclusive_group()
     fs.add_argument("--one-file-system", dest="one_file_system", action="store_true")
     fs.add_argument("--no-one-file-system", dest="one_file_system", action="store_false")
@@ -214,12 +233,21 @@ def load_config(argv: list[str] | None = None) -> AppConfig:
         config.roots = args.paths
     if args.out_dir is not None:
         config.out_dir = args.out_dir
-    for key in ("jobs", "max_depth", "timeout", "worker_recycle", "worker_memory_mb", "worker_user"):
+    for key in (
+        "jobs",
+        "max_depth",
+        "timeout",
+        "worker_recycle",
+        "worker_memory_mb",
+        "worker_user",
+    ):
         value = getattr(args, key)
         if value is not None:
             setattr(config, key, value)
     if args.max_size is not None:
         config.max_size = parse_size(args.max_size, config.max_size)
+    if args.gpu is not None:
+        config.acceleration.gpu = args.gpu
     if args.one_file_system is not None:
         config.one_file_system = args.one_file_system
     if args.follow_symlinks:

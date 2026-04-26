@@ -13,7 +13,14 @@ class YaraEngine:
     _rules: object | None = None
 
     @classmethod
-    def build(cls, rule_dirs: list[Path], compiled_path: Path, *, enabled: bool, required: bool) -> "YaraEngine":
+    def build(
+        cls,
+        rule_dirs: list[Path],
+        compiled_path: Path,
+        *,
+        enabled: bool,
+        required: bool,
+    ) -> "YaraEngine":
         if not enabled:
             return cls(enabled=False, status="disabled")
         try:
@@ -40,14 +47,41 @@ class YaraEngine:
             if required:
                 return cls(enabled=False, status="required_compile_failed", error=str(exc))
             errors.append(str(exc))
-            return cls(enabled=False, status="compile_failed", error=str(exc), matches_compile_errors=errors)
+            return cls(
+                enabled=False,
+                status="compile_failed",
+                error=str(exc),
+                matches_compile_errors=errors,
+            )
         return cls(enabled=True, status="ok", _rules=rules, matches_compile_errors=errors)
+
+    @classmethod
+    def load_compiled(
+        cls,
+        compiled_path: Path,
+        *,
+        enabled: bool,
+        required: bool,
+    ) -> "YaraEngine":
+        if not enabled:
+            return cls(enabled=False, status="disabled")
+        try:
+            import yara  # type: ignore
+        except ImportError as exc:
+            status = "required_unavailable" if required else "unavailable"
+            return cls(enabled=False, status=status, error=str(exc))
+        try:
+            return cls(enabled=True, status="ok", _rules=yara.load(compiled_path.as_posix()))
+        except Exception as exc:
+            status = "required_load_failed" if required else "load_failed"
+            return cls(enabled=False, status=status, error=str(exc))
 
     def match_file(self, path: Path) -> list[str]:
         if self._rules is None:
             return []
         try:
-            return [match.rule for match in self._rules.match(path.as_posix())]  # type: ignore[attr-defined]
+            matches = self._rules.match(path.as_posix())  # type: ignore[attr-defined]
+            return [match.rule for match in matches]
         except Exception:
             return []
 
@@ -55,7 +89,8 @@ class YaraEngine:
         if self._rules is None or not data:
             return []
         try:
-            return [match.rule for match in self._rules.match(data=data)]  # type: ignore[attr-defined]
+            matches = self._rules.match(data=data)  # type: ignore[attr-defined]
+            return [match.rule for match in matches]
         except Exception:
             return []
 
